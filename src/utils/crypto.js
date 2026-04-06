@@ -75,7 +75,7 @@ export function generateAddress(privateKey) {
  */
 export function toChecksumAddress(address) {
   const addr = address.toLowerCase().slice(2)
-  const hash = bytesToHex(keccak_256(hexToBytes(addr)))
+  const hash = bytesToHex(keccak_256(new TextEncoder().encode(addr)))
 
   let checksum = '0x'
   for (let i = 0; i < addr.length; i++) {

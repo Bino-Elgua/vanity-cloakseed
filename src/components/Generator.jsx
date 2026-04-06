@@ -38,58 +38,48 @@ export default function Generator({ onResult, onStatsUpdate }) {
     const difficulty = calculateDifficulty(prefix, suffix)
     let localAttempts = 0
     let localFound = 0
-    let aborted = false
 
-    const generateLoop = async () => {
-      while (!aborted && localFound < maxResults) {
-        try {
-          // Process 1000 candidates per batch for efficiency
-          for (let batch = 0; batch < 1000 && !aborted && localFound < maxResults; batch++) {
-            const privateKey = generatePrivateKey()
-            const publicKey = getPublicKey(privateKey)
-            const address = getAddressFromPublicKey(publicKey)
+    const controller = { aborted: false }
+    generationRef.current = controller
 
-            if (matchesPattern(address, prefix, suffix, caseSensitive)) {
-              localFound++
-              setFound(localFound)
-              onResult({ address, privateKey, timestamp: new Date() })
-            }
+    while (!controller.aborted && localFound < maxResults) {
+      try {
+        for (let batch = 0; batch < 1000 && !controller.aborted && localFound < maxResults; batch++) {
+          const privateKey = generatePrivateKey()
+          const publicKey = getPublicKey(privateKey)
+          const address = getAddressFromPublicKey(publicKey)
 
-            localAttempts++
+          if (matchesPattern(address, prefix, suffix, caseSensitive)) {
+            localFound++
+            setFound(localFound)
+            onResult({ address, privateKey, timestamp: new Date() })
           }
 
-          // Update stats every batch
-          const elapsed = (Date.now() - startTimeRef.current) / 1000
-          const speed = elapsed > 0 ? localAttempts / elapsed : 0
-          const eta = difficulty / (speed || 1)
-
-          setAttempts(localAttempts)
-          setSpeed(speed)
-          setElapsed(Math.round(elapsed))
-          setEta(Math.round(eta))
-
-          onStatsUpdate({
-            generated: localAttempts,
-            speed: Math.round(speed),
-            found: localFound,
-            elapsed: Math.round(elapsed),
-          })
-
-          // Yield to browser periodically
-          await new Promise(resolve => setTimeout(resolve, 0))
-
-          if (localFound >= maxResults) {
-            setIsGenerating(false)
-            return
-          }
-        } catch (error) {
-          console.error('Generation error:', error)
+          localAttempts++
         }
+
+        const elapsed = (Date.now() - startTimeRef.current) / 1000
+        const speed = elapsed > 0 ? localAttempts / elapsed : 0
+        const eta = difficulty / (speed || 1)
+
+        setAttempts(localAttempts)
+        setSpeed(speed)
+        setElapsed(Math.round(elapsed))
+        setEta(Math.round(eta))
+
+        onStatsUpdate({
+          generated: localAttempts,
+          speed: Math.round(speed),
+          found: localFound,
+          elapsed: Math.round(elapsed),
+        })
+
+        await new Promise(resolve => setTimeout(resolve, 0))
+      } catch (error) {
+        console.error('Generation error:', error)
       }
     }
-
-    generationRef.current = { aborted: false }
-    await generateLoop()
+    setIsGenerating(false)
   }
 
   const handleStop = () => {
