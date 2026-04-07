@@ -8,6 +8,7 @@ import * as bip32 from 'bip32';
 import { Wallet, HDNodeWallet } from 'ethers';
 import { payments, networks } from 'bitcoinjs-lib';
 import nacl from 'tweetnacl';
+import bs58 from 'bs58';
 
 // Use the canonical BIP-39 English wordlist from the bip39 package
 const BIP39_WORDLIST = bip39.wordlists.EN;
@@ -21,7 +22,9 @@ export function generateRandomSeed(wordCount = 12) {
   // BIP-39: 12 words = 128 bits, 24 words = 256 bits
   const byteLength = (wordCount * 11 - 11) / 8;
   const entropy = crypto.getRandomValues(new Uint8Array(byteLength));
-  const seedPhrase = bip39.entropyToMnemonic(entropy);
+  const seedPhrase = bip39.entropyToMnemonic(
+    Array.from(entropy).map(b => b.toString(16).padStart(2, '0')).join('')
+  );
   
   return {
     entropy: Array.from(entropy).map(b => b.toString(16).padStart(2, '0')).join(''),
@@ -91,20 +94,19 @@ export function deriveSolanaWallet(seedPhrase) {
     const node = bip32.BIP32.fromSeed(seed, networks.bitcoin);
     
     // BIP-44 derivation path for Solana
-    const derived = node.derivePath("m/44'/501'/0'/0'");
-    
+    const derived = node.derivePath("m/44'/501'/0'/0'/0'");
+
     // Solana uses Ed25519, not ECDSA
     const secretKey = derived.privateKey;
     const keypair = nacl.sign.keyPair.fromSecretKey(secretKey);
-    
+
     // Base58 encode Solana address
-    const bs58 = require('bs58');
     const address = bs58.encode(keypair.publicKey);
-    
+
     return {
       address,
-      publicKey: Buffer.from(keypair.publicKey).toString('hex'),
-      derivationPath: "m/44'/501'/0'/0'"
+      publicKey: Array.from(keypair.publicKey).map(b => b.toString(16).padStart(2, '0')).join(''),
+      derivationPath: "m/44'/501'/0'/0'/0'"
     };
   } catch (err) {
     throw new Error(`Solana derivation failed: ${err.message}`);

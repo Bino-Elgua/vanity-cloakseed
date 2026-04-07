@@ -3,6 +3,7 @@ import * as bip32 from 'bip32'
 import { Wallet } from 'ethers'
 import { payments, networks } from 'bitcoinjs-lib'
 import nacl from 'tweetnacl'
+import bs58 from 'bs58'
 import type { DerivedWallet, MultiChainWallets } from './types'
 
 const BIP39_WORDLIST: string[] = bip39.wordlists.EN
@@ -16,7 +17,9 @@ interface SeedResult {
 export function generateRandomSeed(wordCount: number = 12): SeedResult {
   const byteLength = (wordCount * 11 - 11) / 8
   const entropy = crypto.getRandomValues(new Uint8Array(byteLength))
-  const seedPhrase = bip39.entropyToMnemonic(Buffer.from(entropy))
+  const seedPhrase = bip39.entropyToMnemonic(
+    Array.from(entropy).map(b => b.toString(16).padStart(2, '0')).join('')
+  )
   return {
     entropy: Array.from(entropy).map(b => b.toString(16).padStart(2, '0')).join(''),
     seedPhrase,
@@ -57,15 +60,14 @@ export function deriveBitcoinWallet(seedPhrase: string): DerivedWallet {
 export function deriveSolanaWallet(seedPhrase: string): DerivedWallet {
   const seed = bip39.mnemonicToSeedSync(seedPhrase)
   const node = bip32.BIP32.fromSeed(seed, networks.bitcoin)
-  const derived = node.derivePath("m/44'/501'/0'/0'")
+  const derived = node.derivePath("m/44'/501'/0'/0'/0'")
   const secretKey = derived.privateKey!
   const keypair = nacl.sign.keyPair.fromSecretKey(secretKey)
-  const bs58 = require('bs58') as typeof import('bs58')
   const address = bs58.encode(keypair.publicKey)
   return {
     address,
-    publicKey: Buffer.from(keypair.publicKey).toString('hex'),
-    derivationPath: "m/44'/501'/0'/0'",
+    publicKey: Array.from(keypair.publicKey).map(b => b.toString(16).padStart(2, '0')).join(''),
+    derivationPath: "m/44'/501'/0'/0'/0'",
   }
 }
 

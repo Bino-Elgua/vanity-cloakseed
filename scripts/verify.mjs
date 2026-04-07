@@ -14,7 +14,7 @@
  */
 
 import { execSync } from 'child_process'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync, readdirSync } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -132,20 +132,17 @@ for (const file of requiredFiles) {
 console.log('\n[5/6] Build Config Verification')
 
 check('index.html has CSP with connect-src', () => {
-  const { readFileSync } = await import('fs')
   const html = readFileSync(path.join(ROOT, 'index.html'), 'utf8')
   assert(html.includes('connect-src'), 'CSP missing connect-src directive')
   assert(html.includes('worker-src'), 'CSP missing worker-src directive')
 })
 
 check('vite.config.js has SRI enabled', () => {
-  const { readFileSync } = await import('fs')
   const config = readFileSync(path.join(ROOT, 'vite.config.js'), 'utf8')
   assert(config.includes('subresourceIntegrity'), 'SRI not enabled in vite config')
 })
 
 check('vite.config.js has COOP/COEP headers', () => {
-  const { readFileSync } = await import('fs')
   const config = readFileSync(path.join(ROOT, 'vite.config.js'), 'utf8')
   assert(config.includes('Cross-Origin-Opener-Policy'), 'Missing COOP header')
   assert(config.includes('Cross-Origin-Embedder-Policy'), 'Missing COEP header')
@@ -158,7 +155,6 @@ check('vite.config.js has COOP/COEP headers', () => {
 console.log('\n[6/6] Network Isolation')
 
 check('Only poisonRadar.js imports fetch-related code', () => {
-  const { readFileSync, readdirSync } = await import('fs')
   const utilsDir = path.join(ROOT, 'src', 'utils')
   const files = readdirSync(utilsDir).filter(f => f.endsWith('.js') && f !== 'poisonRadar.js')
   for (const file of files) {

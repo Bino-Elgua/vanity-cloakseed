@@ -16,6 +16,7 @@ export function useAddressGenerator() {
   const workersRef = useRef([])
   const startTimeRef = useRef(null)
   const statsIntervalRef = useRef(null)
+  const attemptsRef = useRef(0)
 
   /**
    * Initialize Web Workers for parallel generation
@@ -38,10 +39,10 @@ export function useAddressGenerator() {
           const { address, privateKey } = payload
           setResults(prev => [...prev, { address, privateKey, timestamp: new Date() }])
         } else if (type === 'stats') {
-          // Update stats from this worker
+          attemptsRef.current += 1000
           setStats(prev => ({
             ...prev,
-            attempts: prev.attempts + 1000,
+            attempts: attemptsRef.current,
             speed: payload.speed,
           }))
         }
@@ -72,6 +73,7 @@ export function useAddressGenerator() {
     setError(null)
     setResults([])
     setStats({ attempts: 0, found: 0, speed: 0, elapsed: 0, eta: 0 })
+    attemptsRef.current = 0
     startTimeRef.current = Date.now()
 
     // Initialize workers
@@ -89,7 +91,7 @@ export function useAddressGenerator() {
     // Update stats every 500ms
     statsIntervalRef.current = setInterval(() => {
       const elapsed = (Date.now() - startTimeRef.current) / 1000
-      const avgSpeed = stats.attempts / (elapsed || 1)
+      const avgSpeed = attemptsRef.current / (elapsed || 1)
       const eta = difficulty / (avgSpeed || 1)
 
       setStats(prev => ({
@@ -103,7 +105,7 @@ export function useAddressGenerator() {
         stopGeneration()
       }
     }, 500)
-  }, [stats, initWorkers])
+  }, [initWorkers])
 
   /**
    * Stop generation
