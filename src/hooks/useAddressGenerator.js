@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { generatePrivateKey, getPublicKey, getAddressFromPublicKey, matchesPattern, calculateDifficulty } from '../utils/crypto'
 
+const RATE_LIMIT_THRESHOLD = 5000 // 5 seconds with no new attempts
+const RATE_LIMIT_PAUSE = 2000 // 2 second pause
+
 export function useAddressGenerator() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [results, setResults] = useState([])
@@ -12,11 +15,14 @@ export function useAddressGenerator() {
     eta: 0,
   })
   const [error, setError] = useState(null)
+  const [isRateLimited, setIsRateLimited] = useState(false)
+  const [rateLimitMessage, setRateLimitMessage] = useState(null)
 
   const workersRef = useRef([])
   const startTimeRef = useRef(null)
   const statsIntervalRef = useRef(null)
   const attemptsRef = useRef(0)
+  const lastAttemptTimeRef = useRef(0)
 
   /**
    * Initialize Web Workers for parallel generation
@@ -40,6 +46,7 @@ export function useAddressGenerator() {
           setResults(prev => [...prev, { address, privateKey, timestamp: new Date() }])
         } else if (type === 'stats') {
           attemptsRef.current += 1000
+          lastAttemptTimeRef.current = Date.now()
           setStats(prev => ({
             ...prev,
             attempts: attemptsRef.current,
@@ -73,7 +80,10 @@ export function useAddressGenerator() {
     setError(null)
     setResults([])
     setStats({ attempts: 0, found: 0, speed: 0, elapsed: 0, eta: 0 })
+    setIsRateLimited(false)
+    setRateLimitMessage(null)
     attemptsRef.current = 0
+    lastAttemptTimeRef.current = Date.now()
     startTimeRef.current = Date.now()
 
     // Initialize workers
@@ -94,6 +104,17 @@ export function useAddressGenerator() {
       const avgSpeed = attemptsRef.current / (elapsed || 1)
       const eta = difficulty / (avgSpeed || 1)
 
+      // Detect stall / rate limiting
+      const timeSinceLastAttempt = Date.now() - lastAttemptTimeRef.current
+      if (timeSinceLastAttempt > RATE_LIMIT_THRESHOLD && !isRateLimited) {
+        setIsRateLimited(true)
+        setRateLimitMessage('Generation paused to prevent browser freeze. Resuming...')
+        setTimeout(() => {
+          setIsRateLimited(false)
+          setRateLimitMessage(null)
+        }, RATE_LIMIT_PAUSE)
+      }
+
       setStats(prev => ({
         ...prev,
         elapsed: Math.round(elapsed),
@@ -101,7 +122,7 @@ export function useAddressGenerator() {
       }))
 
       // Stop if we have enough results
-      if (stats.found >= maxResults) {
+      if (results.length >= maxResults) {
         stopGeneration()
       }
     }, 500)
@@ -112,6 +133,8 @@ export function useAddressGenerator() {
    */
   const stopGeneration = useCallback(() => {
     setIsGenerating(false)
+    setIsRateLimited(false)
+    setRateLimitMessage(null)
     workersRef.current.forEach(w => w.postMessage({ action: 'stop' }))
     if (statsIntervalRef.current) {
       clearInterval(statsIntervalRef.current)
@@ -132,6 +155,8 @@ export function useAddressGenerator() {
     results,
     stats,
     error,
+    isRateLimited,
+    rateLimitMessage,
     startGeneration,
     stopGeneration,
     cleanup,

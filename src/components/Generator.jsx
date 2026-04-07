@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Play, Square, Copy, Download } from 'lucide-react'
+import { Play, Square, Copy, Download, PauseCircle } from 'lucide-react'
 import { generatePrivateKey, getPublicKey, getAddressFromPublicKey, matchesPattern, calculateDifficulty, formatTimeEstimate, validatePatternInputs } from '../utils/crypto'
 
 export default function Generator({ onResult, onStatsUpdate }) {
@@ -16,10 +16,13 @@ export default function Generator({ onResult, onStatsUpdate }) {
   const [elapsed, setElapsed] = useState(0)
   const [eta, setEta] = useState(0)
   const [workerError, setWorkerError] = useState(null)
+  const [isRateLimited, setIsRateLimited] = useState(false)
+  const [rateLimitMessage, setRateLimitMessage] = useState(null)
 
   const startTimeRef = React.useRef(null)
   const generationRef = React.useRef(null)
   const workersRef = React.useRef([])
+  const lastBatchTimeRef = React.useRef(0)
 
   // Detect worker support once
   const workersSupported = React.useRef((() => {
@@ -55,6 +58,9 @@ export default function Generator({ onResult, onStatsUpdate }) {
     setFound(0)
     setSpeed(0)
     setElapsed(0)
+    setIsRateLimited(false)
+    setRateLimitMessage(null)
+    lastBatchTimeRef.current = Date.now()
     startTimeRef.current = Date.now()
 
     const difficulty = calculateDifficulty(prefix, suffix)
@@ -96,6 +102,17 @@ export default function Generator({ onResult, onStatsUpdate }) {
           elapsed: Math.round(elapsed),
         })
 
+        // Rate limit detection: if batch took > 5s, pause briefly
+        const batchDuration = Date.now() - lastBatchTimeRef.current
+        if (batchDuration > 5000) {
+          setIsRateLimited(true)
+          setRateLimitMessage('Generation paused to prevent browser freeze. Resuming...')
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          setIsRateLimited(false)
+          setRateLimitMessage(null)
+        }
+        lastBatchTimeRef.current = Date.now()
+
         await new Promise(resolve => setTimeout(resolve, 0))
       } catch (error) {
         console.error('Generation error:', error)
@@ -128,31 +145,35 @@ export default function Generator({ onResult, onStatsUpdate }) {
       <h2 className="text-2xl font-bold mb-6">Address Generator</h2>
 
       <div className="space-y-4">
-        {/* Inputs */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Prefix (optional)</label>
-          <input
-            type="text"
-            value={prefix}
-            onChange={(e) => setPrefix(e.target.value.replace(/[^0-9a-fA-F]/g, ''))}
-            placeholder="e.g., deadbeef"
-            disabled={isGenerating}
-            className="input"
-            maxLength="10"
-          />
-        </div>
+        {/* Inputs — stack on mobile, side-by-side on md+ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Prefix (optional)</label>
+            <input
+              type="text"
+              value={prefix}
+              onChange={(e) => setPrefix(e.target.value.replace(/[^0-9a-fA-F]/g, ''))}
+              placeholder="e.g., deadbeef"
+              disabled={isGenerating}
+              className="w-full px-4 py-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none text-white input"
+              maxLength="10"
+              data-testid="prefix-input"
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Suffix (optional)</label>
+          <div>
+            <label className="block text-sm font-medium mb-2">Suffix (optional)</label>
           <input
             type="text"
             value={suffix}
             onChange={(e) => setSuffix(e.target.value.replace(/[^0-9a-fA-F]/g, ''))}
             placeholder="e.g., c0ffee"
             disabled={isGenerating}
-            className="input"
+            className="w-full px-4 py-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none text-white input"
             maxLength="10"
+            data-testid="suffix-input"
           />
+          </div>
         </div>
 
         {/* Options */}
@@ -246,6 +267,16 @@ export default function Generator({ onResult, onStatsUpdate }) {
           </div>
         )}
 
+        {/* Rate limit warning */}
+        {isRateLimited && (
+          <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-yellow-400">
+              <PauseCircle size={18} />
+              <span className="text-sm font-medium">{rateLimitMessage}</span>
+            </div>
+          </div>
+        )}
+
         {/* Worker status */}
         {!workersSupported.current && (
           <div className="text-xs text-yellow-500 bg-yellow-500/10 px-3 py-2 rounded">
@@ -254,11 +285,12 @@ export default function Generator({ onResult, onStatsUpdate }) {
         )}
 
         {/* Buttons */}
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {!isGenerating ? (
             <button
               onClick={handleStart}
-              className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+              className="btn btn-primary w-full sm:flex-1 flex items-center justify-center gap-2 py-3"
+              data-testid="start-button"
             >
               <Play size={18} />
               Generate Address
@@ -266,7 +298,8 @@ export default function Generator({ onResult, onStatsUpdate }) {
           ) : (
             <button
               onClick={handleStop}
-              className="btn bg-red-500 hover:bg-red-600 text-white flex-1 flex items-center justify-center gap-2"
+              className="btn bg-red-500 hover:bg-red-600 text-white w-full sm:flex-1 flex items-center justify-center gap-2 py-3"
+              data-testid="stop-button"
             >
               <Square size={18} />
               Stop

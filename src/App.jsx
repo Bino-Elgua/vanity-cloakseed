@@ -2,6 +2,7 @@ import React, { useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import useCloak from './hooks/useCloak';
 import ErrorBoundary from './components/ErrorBoundary';
+import Onboarding from './components/Onboarding';
 
 // Lazy-loaded heavy components (code-split by Vite)
 const Generator = lazy(() => import('./components/Generator'));
@@ -41,6 +42,8 @@ function VanityPage() {
 
   const handleResult = (result) => {
     setResults((prev) => [...prev, result]);
+    // Haptic feedback on mobile when address found
+    if (navigator.vibrate) navigator.vibrate(50);
   };
 
   const handleStatsUpdate = (newStats) => {
@@ -66,27 +69,27 @@ function VanityPage() {
 }
 
 function NavBar() {
-  const linkBase = 'px-5 py-2.5 rounded-lg font-medium text-sm transition-colors';
+  const linkBase = 'px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg font-medium text-xs sm:text-sm transition-colors';
   const activeClass = 'bg-blue-600 text-white shadow-glow';
   const inactiveClass = 'text-gray-400 hover:text-white hover:bg-gray-800';
 
   return (
-    <nav className="border-b border-gray-800 mb-8">
-      <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="text-xl font-bold gradient-text">⟠ VanityCloakSeed</div>
-        <div className="flex gap-2">
+    <nav className="border-b border-gray-800 mb-4 sm:mb-8">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
+        <div className="text-base sm:text-xl font-bold gradient-text">VanityCloakSeed</div>
+        <div className="flex gap-1 sm:gap-2">
           <NavLink
             to="/"
             end
             className={({ isActive }) => `${linkBase} ${isActive ? activeClass : inactiveClass}`}
           >
-            🔑 Vanity Generator
+            Vanity
           </NavLink>
           <NavLink
             to="/cloakseed"
             className={({ isActive }) => `${linkBase} ${isActive ? activeClass : inactiveClass}`}
           >
-            🔐 CloakSeed
+            CloakSeed
           </NavLink>
         </div>
       </div>
@@ -98,6 +101,7 @@ export default function App() {
   return (
     <Router>
       <div className="min-h-screen bg-black text-white">
+        <Onboarding />
         <NavBar />
         <main className="px-4 pb-12">
           <Suspense fallback={<LoadingSpinner />}>

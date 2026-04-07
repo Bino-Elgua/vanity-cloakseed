@@ -25,6 +25,8 @@
  * @property {string} [error]
  */
 
+import { validateAddress } from './validation'
+
 const STORAGE_KEY = 'vanity-profiles-v2'
 const BATCH_QUEUE_KEY = 'vanity-batch-queue-v2'
 const LOCK_TIMEOUT = 5 * 60 * 1000 // 5 minutes
@@ -288,6 +290,9 @@ export async function importProfiles(jsonString) {
   if (!Array.isArray(profiles)) throw new Error('Invalid format')
   for (const p of profiles) {
     if (!p.id || !p.name || !p.chain) throw new Error('Invalid profile structure')
+    if (p.address && !validateAddress(p.address, p.chain)) {
+      throw new Error(`Invalid ${p.chain} address: ${p.address}`)
+    }
   }
   await writeStore(STORAGE_KEY, profiles)
   return profiles.length

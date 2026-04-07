@@ -51,7 +51,7 @@ export default function Results({ results }) {
           <div key={idx} className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
             {/* Address */}
             <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="font-mono text-sm break-all text-primary-600 dark:text-primary-400">
+              <div className="font-mono text-sm break-all text-primary-600 dark:text-primary-400" data-testid="result-address">
                 {result.address}
               </div>
               <button
