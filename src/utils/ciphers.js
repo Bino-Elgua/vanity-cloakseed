@@ -165,6 +165,12 @@ export function validateCipher(cipherWords) {
     return { isValid: false, error: 'Cipher contains invalid or empty words' };
   }
 
+  // Enforce max word length
+  const tooLong = cipherWords.find(w => w.length > 50)
+  if (tooLong) {
+    return { isValid: false, error: `Cipher word exceeds 50 character limit: "${tooLong.slice(0, 20)}..."` }
+  }
+
   return { isValid: true };
 }
 

@@ -46,6 +46,12 @@ function concatBytes(...arrays) {
  */
 export function calculateCreate2Address(deployer, salt, bytecode) {
   try {
+    // Validate bytecode size (max 25KB = 25600 bytes = 51200 hex chars)
+    const bytecodeHex = bytecode.startsWith('0x') ? bytecode.slice(2) : bytecode
+    if (bytecodeHex.length > 51200) {
+      throw new Error('Bytecode exceeds 25KB limit')
+    }
+
     // Normalize inputs
     const deployerBytes = hexToBytes(deployer.slice(2))
     const saltBytes = normalizeBytesInput(salt, 32)
@@ -82,6 +88,13 @@ export function calculateCreate2Address(deployer, salt, bytecode) {
  */
 export async function findVanitySalt(deployer, bytecode, pattern, maxAttempts = 1000000) {
   const patternLower = pattern.toLowerCase()
+
+  // Validate bytecode size (max 25KB)
+  const bytecodeHex = bytecode.startsWith('0x') ? bytecode.slice(2) : bytecode
+  if (bytecodeHex.length > 51200) {
+    throw new Error('Bytecode exceeds 25KB limit')
+  }
+
   let attempts = 0
 
   while (attempts < maxAttempts) {

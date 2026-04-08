@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { generatePrivateKey, getPublicKey, getAddressFromPublicKey, matchesPattern, calculateDifficulty } from '../utils/crypto'
 
 const RATE_LIMIT_THRESHOLD = 5000 // 5 seconds with no new attempts
@@ -149,6 +149,18 @@ export function useAddressGenerator() {
     workersRef.current.forEach(w => w.terminate())
     workersRef.current = []
   }, [stopGeneration])
+
+  // Cleanup on unmount: terminate workers and clear intervals
+  useEffect(() => {
+    return () => {
+      workersRef.current.forEach(w => w.terminate())
+      workersRef.current = []
+      if (statsIntervalRef.current) {
+        clearInterval(statsIntervalRef.current)
+        statsIntervalRef.current = null
+      }
+    }
+  }, [])
 
   return {
     isGenerating,

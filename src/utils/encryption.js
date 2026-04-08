@@ -98,7 +98,7 @@ export async function decryptPrivateKey(encryptedData, password) {
   return decoder.decode(plaintext)
 }
 
-export function generateOneTimeQR(privateKey) {
+export async function generateOneTimeQR(privateKey) {
   /**
    * Generate one-time QR code data
    * Burns after scan - store hash only
@@ -116,13 +116,13 @@ export function generateOneTimeQR(privateKey) {
   
   return {
     data: JSON.stringify(data),
-    hash: hashData(JSON.stringify(data)),
+    hash: await hashData(JSON.stringify(data)),
     timestamp,
     ttl: 300000, // 5 minutes
   }
 }
 
-export function encryptWithChecksum(data, password) {
+export async function encryptWithChecksum(data, password) {
   /**
    * Export with base64 + checksum for verification
    */
@@ -132,7 +132,7 @@ export function encryptWithChecksum(data, password) {
   
   // Create checksum
   const checksumData = encoder.encode(encoded + password)
-  const checksum = hashData(checksumData)
+  const checksum = await hashData(checksumData)
   
   return {
     data: encoded,
@@ -141,14 +141,14 @@ export function encryptWithChecksum(data, password) {
   }
 }
 
-export function verifyChecksum(payload, password) {
+export async function verifyChecksum(payload, password) {
   /**
    * Verify checksum before unlock
    */
   
   const encoder = new TextEncoder()
   const checksumData = encoder.encode(payload.data + password)
-  const expected = hashData(checksumData).substring(0, 16)
+  const expected = (await hashData(checksumData)).substring(0, 16)
   
   return expected === payload.checksum
 }
@@ -176,19 +176,17 @@ function bytesToHex(bytes) {
     .join('')
 }
 
-function hashData(data) {
+async function hashData(data) {
   /**
    * SHA-256 hash for checksums
    * Returns hex string
    */
-  let hash = 0
-  const str = typeof data === 'string' ? data : bytesToHex(data)
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash = hash & hash // Convert to 32-bit
-  }
-  return Math.abs(hash).toString(16).padStart(16, '0')
+  const encoder = new TextEncoder()
+  const msgBuffer = typeof data === 'string' ? encoder.encode(data) : data
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 export function generateKeystoreJSON(address, encryptedKey, chain) {
@@ -220,9 +218,9 @@ export function generateKeystoreJSON(address, encryptedKey, chain) {
 }
 
 function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0f) | 0x40 // Version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80 // Variant 1
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
 }
