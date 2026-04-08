@@ -3,7 +3,7 @@
  * Manages cipher, generation, restoration, panic phrases, etc.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useContext } from 'react';
 import * as bip39 from 'bip39';
 import {
   generateCipherFromTheme,
@@ -18,10 +18,13 @@ import {
 } from '../utils/ciphers';
 import { THEMES } from '../utils/wordlists';
 import { generateRandomSeed, getAllAddresses, validateSeedPhrase } from '../utils/bip39Helper';
+import SecurityContext from '../context/SecurityContext.jsx';
 
 const STORAGE_KEY = 'cloakseed_data';
 
 export function useCloakSeed() {
+  const { isParanoidMode } = useContext(SecurityContext);
+
   // Cipher state
   const [cipher, setCipherState] = useState(null);
   const [selectedTheme, setSelectedTheme] = useState('animals');
@@ -68,6 +71,7 @@ export function useCloakSeed() {
    * Non-cipher fields (theme, premium, fingerprint) are stored unencrypted.
    */
   const loadFromStorage = useCallback(async () => {
+    if (isParanoidMode) return;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return;
@@ -104,6 +108,7 @@ export function useCloakSeed() {
    * Never stores cipher in plaintext.
    */
   const saveToStorage = useCallback(async (data) => {
+    if (isParanoidMode) return;
     try {
       const current = localStorage.getItem(STORAGE_KEY);
       const stored = current ? JSON.parse(current) : {};
@@ -422,8 +427,10 @@ export function useCloakSeed() {
     setSelectedTheme('animals');
     setCipherFingerprint(null);
     zeroize();
-    localStorage.removeItem(STORAGE_KEY);
-  }, [zeroize]);
+    if (!isParanoidMode) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [zeroize, isParanoidMode]);
 
   return {
     // Cipher state

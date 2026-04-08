@@ -1,13 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import { ParanoidModeProvider } from './hooks/useParanoidMode.jsx'
+import { SecurityProvider } from './context/SecurityContext.jsx'
 import './index.css'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ParanoidModeProvider>
+    <SecurityProvider>
       <App />
-    </ParanoidModeProvider>
+    </SecurityProvider>
   </React.StrictMode>,
 )
 
