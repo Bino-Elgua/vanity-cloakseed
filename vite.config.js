@@ -59,4 +59,9 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
+  test: {
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{ts,tsx,js,jsx}'],
+    setupFiles: ['./src/test-setup.ts'],
+  },
 })

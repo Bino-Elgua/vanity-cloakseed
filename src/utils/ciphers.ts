@@ -13,7 +13,7 @@ export function validateBip39Wordlist(): Bip39WordlistValidation {
   if (!BIP39_WORDS || BIP39_WORDS.length !== 2048) {
     return { valid: false, error: `Expected 2048 BIP-39 words, got ${BIP39_WORDS?.length || 0}` }
   }
-  const checks: [number, string][] = [[0, 'abandon'], [2047, 'zoo'], [1024, 'luxury']]
+  const checks: [number, string][] = [[0, 'abandon'], [2047, 'zoo'], [1024, 'length']]
   for (const [idx, expected] of checks) {
     if (BIP39_WORDS[idx] !== expected) {
       return { valid: false, error: `Wordlist mismatch at index ${idx}: expected "${expected}", got "${BIP39_WORDS[idx]}"` }

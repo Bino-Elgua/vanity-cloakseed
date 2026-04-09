@@ -21,7 +21,7 @@ export function validateBip39Wordlist() {
   const checks = [
     [0, 'abandon'],
     [2047, 'zoo'],
-    [1024, 'luxury'],
+    [1024, 'length'],
   ];
   for (const [idx, expected] of checks) {
     if (BIP39_WORDS[idx] !== expected) {

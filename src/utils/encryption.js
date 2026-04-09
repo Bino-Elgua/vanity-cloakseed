@@ -122,18 +122,9 @@ export async function generateOneTimeQR(privateKey) {
   }
 }
 
-export async function encryptWithChecksum(data, password) {
-  /**
-   * Export with base64 + checksum for verification
-   */
-  
-  const encoder = new TextEncoder()
-  const encoded = btoa(data) // Base64 encode
-  
-  // Create checksum
-  const checksumData = encoder.encode(encoded + password)
-  const checksum = await hashData(checksumData)
-  
+export function encryptWithChecksum(data, password) {
+  const encoded = btoa(data)
+  const checksum = hashDataSync(encoded + password)
   return {
     data: encoded,
     checksum: checksum.substring(0, 16),
@@ -141,15 +132,8 @@ export async function encryptWithChecksum(data, password) {
   }
 }
 
-export async function verifyChecksum(payload, password) {
-  /**
-   * Verify checksum before unlock
-   */
-  
-  const encoder = new TextEncoder()
-  const checksumData = encoder.encode(payload.data + password)
-  const expected = (await hashData(checksumData)).substring(0, 16)
-  
+export function verifyChecksum(payload, password) {
+  const expected = hashDataSync(payload.data + password).substring(0, 16)
   return expected === payload.checksum
 }
 
@@ -177,16 +161,22 @@ function bytesToHex(bytes) {
 }
 
 async function hashData(data) {
-  /**
-   * SHA-256 hash for checksums
-   * Returns hex string
-   */
   const encoder = new TextEncoder()
   const msgBuffer = typeof data === 'string' ? encoder.encode(data) : data
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
   return Array.from(new Uint8Array(hashBuffer))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('')
+}
+
+// Synchronous djb2-style hash used by encryptWithChecksum/verifyChecksum
+function hashDataSync(data) {
+  let hash = 0
+  for (let i = 0; i < data.length; i++) {
+    hash = ((hash << 5) - hash) + data.charCodeAt(i)
+    hash = hash & hash
+  }
+  return Math.abs(hash).toString(16).padStart(16, '0')
 }
 
 export function generateKeystoreJSON(address, encryptedKey, chain) {

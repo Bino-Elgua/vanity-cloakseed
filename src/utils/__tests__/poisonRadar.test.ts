@@ -49,8 +49,9 @@ describe('poisonRadar', () => {
     it('handles RPC error gracefully', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'))
 
+      // Use a different address to avoid hitting the cache from the previous test
       const result = await analyzeAddress(
-        '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+        '0x0000000000000000000000000000000000000001',
         ethChain as any
       )
       expect(result.status).toBe('error')

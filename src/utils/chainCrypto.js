@@ -1,10 +1,16 @@
 import * as secp256k1 from '@noble/secp256k1'
 import * as ed25519 from '@noble/ed25519'
+import { sha512 } from '@noble/hashes/sha512'
 import { keccak_256, sha3_256 } from '@noble/hashes/sha3'
 import { sha256 } from '@noble/hashes/sha256'
 import { ripemd160 } from '@noble/hashes/ripemd160'
 import { blake2b } from '@noble/hashes/blake2b'
 import bs58 from 'bs58'
+
+// @noble/ed25519 v2 requires sha512Sync on the `etc` object for sync key ops
+if (!ed25519.etc.sha512Sync) {
+  ed25519.etc.sha512Sync = (...m) => sha512(...m)
+}
 
 /**
  * Multi-chain cryptography engine

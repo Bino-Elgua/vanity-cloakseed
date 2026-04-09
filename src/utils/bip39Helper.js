@@ -20,7 +20,7 @@ const BIP39_WORDLIST = bip39.wordlists.EN;
  */
 export function generateRandomSeed(wordCount = 12) {
   // BIP-39: 12 words = 128 bits, 24 words = 256 bits
-  const byteLength = (wordCount * 11 - 11) / 8;
+  const byteLength = wordCount * 11 * 4 / 33; // BIP-39: 12w=16B, 15w=20B, 18w=24B, 21w=28B, 24w=32B
   const entropy = crypto.getRandomValues(new Uint8Array(byteLength));
   const seedPhrase = bip39.entropyToMnemonic(
     Array.from(entropy).map(b => b.toString(16).padStart(2, '0')).join('')
